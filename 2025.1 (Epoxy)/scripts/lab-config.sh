@@ -2,7 +2,7 @@
 
 # Run this script after succesful OpenStack deployment with 'deploy-openstack.sh' script
 # 'prep-linux./sh' downloads the script into 'scripts' subfolder, otherwise fetch it from the repo:
-# $ wget "https://raw.githubusercontent.com/kriscelmer/os_lab/refs/heads/main/2025.1%20(Epoxy)/scripts/lab-config.sh"
+# $ wget "https://github.com/tobyjoe4life/openstack_lab/blob/7379e31b70e21cb1c268a5edea4d6b94659b2b5b/2025.1%20(Epoxy)/scripts/lab-config.sh"
 # $ bash lab-config.sh
 # Follow on screen instructions when script finishes
 
