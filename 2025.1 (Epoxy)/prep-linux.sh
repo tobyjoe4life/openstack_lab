@@ -1,7 +1,7 @@
 #! /bin/bash
 
 # To run this script in freshly installed Ubuntu 24.04:
-# $ wget "https://raw.githubusercontent.com/kriscelmer/os_lab/refs/heads/main/2025.1%20(Epoxy)/prep-linux.sh"
+# $ wget "https://github.com/tobyjoe4life/openstack_lab/blob/435326f44aef50b4d8febfcbd9cc7d43022a4bdd/2025.1%20(Epoxy)/prep-linux.sh"
 # $ bash prep-linux.sh
 # Follow on screen instructions
 
