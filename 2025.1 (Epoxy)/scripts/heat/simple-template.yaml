@@ -1,0 +1,150 @@
+heat_template_version: 2018-08-31
+
+description: >
+  Section "Introduction to Heat and Automation", Lesson "Understanding Heat Template Structure and Resources" 
+  demo template: a single Nova server + a Cinder data volume attached to it. 
+  Shows HOT sections (parameters/resources/outputs) and
+  intrinsic functions (get_param, get_resource, get_attr, str_replace).
+
+# --- Inputs, override at create time with '--parameter key=value' option, i.e. '--parameter volume_size_gb=2' ---
+parameters:
+  instance_name:
+    type: string
+    description: Name for the Nova instance (server).
+    default: sec11-simple-srv
+  image_name:
+    type: string
+    description: Glance image name or ID.
+    default: demo-ubuntu24.04
+  flavor_name:
+    type: string
+    description: Flavor name or ID.
+    default: m1.small
+  net_name:
+    type: string
+    description: Neutron network (name or ID) for the server NIC.
+    default: demo-net
+  secgroup_name:
+    type: string
+    description: Security group to attach to the server.
+    default: ssh-icmp
+  key_name:
+    type: string
+    description: Existing Nova key pair to inject into the server.
+    default: labkey
+  volume_size_gb:
+    type: number
+    description: Size in GB for the Cinder data volume.
+    default: 1
+    constraints:
+      - range: { min: 1 }
+        description: Must be at least 1 GB.
+  data_device_path:
+    type: string
+    description: In-guest device path to attach/mount the data volume.
+    default: /dev/vdb
+
+# --- Resources Heat will create ---
+resources:
+  # The compute instance
+  server:
+    type: OS::Nova::Server
+    properties:
+      name:   { get_param: instance_name }
+      image:  { get_param: image_name }
+      flavor: { get_param: flavor_name }
+      key_name: { get_param: key_name }
+      networks:
+        - network: { get_param: net_name }
+      security_groups:
+        - { get_param: secgroup_name }
+
+      # Boot-time script: format /dev/vdb as ext4 and mount at /data
+      # (requires a cloud-init capable image; on very minimal images some tools may be missing)
+      user_data_format: RAW
+      user_data:
+        str_replace:
+          template: |
+            #!/bin/bash
+            set -euxo pipefail
+            DEV=__DATA_DEV__
+            MNT=/data
+            # Wait briefly for the device to appear
+            for i in {1..30}; do
+              [ -b "$DEV" ] && break
+              sleep 1
+            done
+            if [ -b "$DEV" ]; then
+              mkdir -p "$MNT"
+              # Create filesystem if none exists
+              blkid "$DEV" >/dev/null 2>&1 || mkfs.ext4 -F "$DEV"
+              # Mount and persist
+              mount "$DEV" "$MNT" || true
+              grep -qE "^$DEV\\s+$MNT\\s+ext4" /etc/fstab || echo "$DEV $MNT ext4 defaults 0 0" >> /etc/fstab
+              touch /data/heat_provisioned.txt
+            fi
+          params:
+            __DATA_DEV__: { get_param: data_device_path }
+
+  # A simple Cinder volume whose name is derived from the instance_name
+  data_volume:
+    type: OS::Cinder::Volume
+    properties:
+      name:
+        str_replace:
+          template: "%name%-vol"
+          params:
+            "%name%": { get_param: instance_name }
+      size: { get_param: volume_size_gb }
+
+  # Link the volume to the server
+  attach_volume:
+    type: OS::Cinder::VolumeAttachment
+    properties:
+      instance_uuid: { get_resource: server }
+      volume_id:     { get_resource: data_volume }
+      # Heat passes this as a hint to Nova; some hypervisors may use a different path.
+      mountpoint: { get_param: data_device_path }
+
+# --- Values returned after stack creation ---
+outputs:
+  out_instance_name:
+    description: The server's name.
+    value: { get_param: instance_name }
+
+  out_instance_id:
+    description: The server UUID (resource ID).
+    value: { get_resource: server }
+
+  out_flavor_name:
+    description: Server flavor used.
+    value: { get_param: flavor_name }
+
+  out_image_name:
+    description: Server image used.
+    value: { get_param: image_name }
+
+  out_network_name:
+    description: Connected Neutron network.
+    value: { get_param: net_name }
+
+  out_security_group_name:
+    description: Security group applied.
+    value: { get_param: secgroup_name }
+
+  out_keypair_name:
+    description: Key pair injected into the server.
+    value: { get_param: key_name }
+
+  out_fixed_ip:
+    description: First fixed IP on the specified network.
+    # Prefer the 'networks' attribute (first address in that network).
+    value: { get_attr: [ server, networks, { get_param: net_name }, 0 ] }
+
+  out_volume_name:
+    description: Volume name.
+    value: { get_attr: [ data_volume, name ] }
+
+  out_volume_id:
+    description: Volume ID.
+    value: { get_resource: data_volume }

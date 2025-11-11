@@ -1,0 +1,20 @@
+parameters:
+  # External provider network used for router gateway and Floating IPs
+  ext_provider_net: provider-net
+
+  # Compute image & flavor
+  image_name: demo-ubuntu24.04   # Use any cloud-init capable image with apt/dnf/yum
+  flavor_name: m1.small          # Adjust if your image is lightweight/heavier
+
+  # SSH key (useful for rescue even though SG does not allow SSH ingress)
+  key_name: labkey
+
+  # Server name
+  server_name: sec11-web-server
+
+  # Tenant subnet config
+  internal_cidr: 10.51.0.0/24
+  dns_nameservers: 8.8.8.8
+
+  # Web page URL
+  page_url: "https://raw.githubusercontent.com/kriscelmer/os_lab/refs/heads/main/2025.1%20(Epoxy)/scripts/utils/index.html"
