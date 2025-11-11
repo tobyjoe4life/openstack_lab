@@ -2,7 +2,7 @@
 
 # To run this script in freshly installed Ubuntu 24.04, first configure the OS by running 'prep-linux.sh' from the same repo
 # 'prep-linux./sh' downloads the script into 'scripts' subfolder, otherwise fetch it from the repo:
-# $ wget "https://raw.githubusercontent.com/kriscelmer/os_lab/refs/heads/main/2025.1%20(Epoxy)/scripts/deploy-openstack.sh"
+# $ wget "https://github.com/tobyjoe4life/openstack_lab/blob/93f23d749f58f5f50d36de0bd0dc9dfcd8b58dfa/2025.1%20(Epoxy)/scripts/deploy-openstack.sh"
 # $ bash deploy-openstack.sh
 # Script takes 20-45 minutes to complete
 # Follow on screen instructions when script finishes
