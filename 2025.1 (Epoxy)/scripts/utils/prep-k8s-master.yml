@@ -1,0 +1,49 @@
+#cloud-config
+#
+# --- Kubernetes master bootstrap for image "ubuntu24.04-k8s-1.33" ---
+#
+
+write_files:
+  - path: /usr/local/bin/bootstrap-k8s-master.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euxo pipefail
+
+      export DEBIAN_FRONTEND=noninteractive
+
+      # 1. Initialise the control‑plane (idempotent)
+      if [ ! -f /etc/kubernetes/admin.conf ]; then
+        kubeadm init --pod-network-cidr 10.244.0.0/16
+      fi
+
+      # 2. kubectl for the default ubuntu user
+      mkdir -p /home/ubuntu/.kube
+      cp /etc/kubernetes/admin.conf /home/ubuntu/.kube/config
+      chown ubuntu:ubuntu /home/ubuntu/.kube/config
+
+      # 3. Calico v3.30.2 with VXLAN (operator + minimal Installation)
+      VER=v3.30.2
+      KCFG=/etc/kubernetes/admin.conf
+      kubectl --kubeconfig "$KCFG" apply --server-side -f https://raw.githubusercontent.com/projectcalico/calico/${VER}/manifests/operator-crds.yaml
+      kubectl --kubeconfig "$KCFG" apply -f https://raw.githubusercontent.com/projectcalico/calico/${VER}/manifests/tigera-operator.yaml
+      cat <<EOF | kubectl --kubeconfig "$KCFG" apply -f -
+      apiVersion: operator.tigera.io/v1
+      kind: Installation
+      metadata:
+        name: default
+      spec:
+        calicoNetwork:
+          ipPools:
+          - cidr: 10.244.0.0/16
+            encapsulation: VXLAN
+      EOF
+
+      # 4. Output a never‑expiring join command for future workers
+      kubeadm token create --print-join-command --ttl 0 > /home/ubuntu/joincommand.sh
+      chown ubuntu:ubuntu /home/ubuntu/joincommand.sh
+      echo "====> Join command saved to /home/ubuntu/joincommand.sh"
+
+runcmd:
+  - /usr/local/bin/bootstrap-k8s-master.sh

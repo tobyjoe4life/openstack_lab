@@ -1,0 +1,36 @@
+#cloud-config
+#
+# --- diskimage-builder installation and NGINX image creation bootstrap for image "demo-ubuntu24.04" ---
+#
+
+write_files:
+  - path: /home/ubuntu/bootstrap-dib-nginx.sh
+    owner: root:root
+    permissions: "0755"
+    content: |
+      #!/usr/bin/env bash
+      set -euxo pipefail
+      # Ubuntu/Debian prerequisites
+      apt-get update
+      apt-get -y install python3-venv qemu-utils debootstrap git
+      # Isolate DIB in a virtualenv
+      cd /home/ubuntu
+      python3 -m venv dib-venv
+      source dib-venv/bin/activate
+      pip install --upgrade pip
+      pip install diskimage-builder        # pulls the latest release
+      git clone "https://github.com/kriscelmer/dib-nginx"
+      # Tell DIB where to find your element
+      export ELEMENTS_PATH=/home/ubuntu/dib-nginx/elements
+      # Pick the Ubuntu release
+      export DIB_RELEASE=noble # Ubuntu 24.04 LTS
+      # Build; “vm” adds a bootloader, “ubuntu” pulls the cloud image, "nginx" refers to subfolder in ELEMENTS_PATH, "install-static" copies static files from $ELEMENTS_PATH/nginx/static
+      disk-image-create ubuntu vm nginx install-static -o ubuntu24.04-nginx
+      chown ubuntu:ubuntu ubuntu24.04-nginx.qcow2
+      cat << EOF
+      =======================================================================================
+      ===> Custom NGINX image created successfully: /home/ubuntu/ubuntu24.04-nginx.qcow2    =
+      =======================================================================================
+      EOF
+runcmd:
+  - /home/ubuntu/bootstrap-dib-nginx.sh
